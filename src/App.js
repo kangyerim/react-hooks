@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
+import useAxios from './useAxios/useAxios';
 
 const useInput = (initVal, validater) => {
   const [value, setValue] = useState(initVal);
@@ -141,6 +142,57 @@ const useNetwork = (onChange) => {
   return status;
 };
 
+const useScroll = () => {
+  const [state, setState] = useState({ x: 0, y: 0 });
+
+  const onScroll = () => {
+    setState({ y: window.scrollY, x: window.scrollX });
+  };
+  useEffect(() => {
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  });
+  return state;
+};
+
+const useFullScreen = () => {
+  const element = useRef();
+  const triggerFull = () => {
+    if (element.current) {
+      element.current.requestFullscreen();
+    }
+  };
+
+  const exitFULL = () => {
+    document.exitFullscreen();
+  };
+
+  return { element, triggerFull, exitFULL };
+};
+
+const useNotification = (title, options) => {
+  console.log(title);
+  if (!('Notification' in window)) {
+    return;
+  }
+  const fireNoti = () => {
+    if (Notification.permission !== 'granted') {
+      console.log(Notification.permission);
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          new Notification(title, options);
+        } else {
+          return;
+        }
+      });
+    } else {
+      new Notification(title, options);
+    }
+  };
+
+  return fireNoti;
+};
+
 const App = () => {
   const maxLeng = (value) => value.length <= 10;
   const name = useInput('이름', maxLeng);
@@ -170,13 +222,23 @@ const App = () => {
   };
   const onLine = useNetwork(handleNetworkChange);
 
+  const { y } = useScroll();
+
+  const { element, triggerFull, exitFULL } = useFullScreen();
+
+  const triggerNoti = useNotification('meow~ :w');
+
+  const { loading, data, error, refetch } = useAxios({
+    url: 'https://yts-proxy.now.sh/list_movies.json?sort_by=rating',
+  });
+  console.log(loading, data, error);
   return (
-    <div className="App">
+    <div className="App" style={{ height: '1000vh' }}>
       <h1 ref={title}>Hello React</h1>
       <h1 {...fadeInH1} style={{ opacity: 0 }}>
         hi useFadeIn
       </h1>
-      <h1>{onLine ? 'Online' : 'OffLine'}</h1>
+      <h1 style={{ position: 'fixed', color: y > 100 ? 'red' : 'blue' }}>{onLine ? 'Online' : 'OffLine'}</h1>
       <p {...fadeInP}>useFadeIn hook~ animation~~~</p>
       <input value={name.value} onChange={name.onChange} placeholder="Name" /> <br />
       <input {...name} placeholder="Name" />
@@ -195,6 +257,12 @@ const App = () => {
       <button onClick={enablePrevent}>보호</button>
       <button onClick={disablePrevent}>무시</button>
       <br />
+      <img ref={element} alt="" src="https://cdn.hellodd.com/news/photo/202005/71835_craw1.jpg"></img>
+      <button onClick={triggerFull}>풀 스크린</button>
+      <button onClick={triggerNoti}>notice</button>
+      <button onClick={refetch}>refetch</button>
+      <h1>{data && data.status}</h1>
+      <h2>{loading && 'Loading'}</h2>
     </div>
   );
 };
